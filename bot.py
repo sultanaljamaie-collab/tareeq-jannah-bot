@@ -11,7 +11,6 @@ from prophets import prophets
 from achievements import get_medal
 from daily import daily_question
 from levels import quiz_levels
-from voice import speak
 from ai_system import ai_answer
 
 TOKEN = os.getenv("TOKEN")
@@ -31,6 +30,8 @@ correct_answers = {}
 
 waiting_ai = set()
 
+user_questions = {}
+
 # =========================
 # START
 # =========================
@@ -42,9 +43,12 @@ def start(message):
 
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
 
+    keyboard.add("📖 تعلم عن الإسلام","🔭 دلائل وجود الله")
+    keyboard.add("📚 آية اليوم","🕌 حديث نبوي")
+    keyboard.add("📜 قصص الأنبياء","🌍 Discover Islam")
     keyboard.add("🎮 المسابقة","🔥 التحدي اليومي")
-    keyboard.add("📜 قصص الأنبياء","🏆 نقاطي")
-    keyboard.add("🤖 اسأل الذكاء الإسلامي")
+    keyboard.add("🏆 نقاطي","🥇 المتصدرون")
+    keyboard.add("📊 عدد المستخدمين","🤖 اسأل الذكاء الإسلامي")
 
     bot.send_message(
         message.chat.id,
@@ -53,7 +57,7 @@ def start(message):
     )
 
 # =========================
-# QUIZ LEVELS
+# QUIZ
 # =========================
 
 @bot.message_handler(func=lambda m: m.text=="🎮 المسابقة")
@@ -83,10 +87,6 @@ def set_level(call):
     question_count[user] = 0
     correct_answers[user] = 0
 
-    voice = speak("بدأت المسابقة")
-
-    bot.send_voice(user,open(voice,"rb"))
-
     send_question(user)
 
 # =========================
@@ -105,10 +105,6 @@ def send_question(user):
 
         medal = get_medal(scores.get(user,0))
 
-        voice = speak("انتهت المسابقة")
-
-        bot.send_voice(user,open(voice,"rb"))
-
         bot.send_message(
             user,
             f"🎉 انتهت المسابقة\n\n"
@@ -119,9 +115,13 @@ def send_question(user):
 
         return
 
-    question_count[user] += 1
+    if user not in user_questions:
+        user_questions[user] = questions.copy()
+        random.shuffle(user_questions[user])
 
-    q = random.choice(questions)
+    q = user_questions[user].pop()
+
+    question_count[user] += 1
 
     answers[user] = q["answer"]
 
@@ -137,15 +137,11 @@ def send_question(user):
 
     bot.send_message(
         user,
-        f"السؤال {question_count[user]} من {total}\n"
+        f"🎯 السؤال {question_count[user]} من {total}\n"
         f"⏱ {QUESTION_TIME} ثانية\n\n"
         f"❓ {q['question']}",
         reply_markup=markup
     )
-
-    voice = speak(q["question"])
-
-    bot.send_voice(user,open(voice,"rb"))
 
     timer_running[user] = True
 
@@ -167,10 +163,6 @@ def start_timer(user):
             time.sleep(1)
 
         scores[user] = scores.get(user,0)-2
-
-        voice = speak("انتهى الوقت")
-
-        bot.send_voice(user,open(voice,"rb"))
 
         bot.send_message(user,"⏰ انتهى الوقت\n-2 نقاط")
 
@@ -198,26 +190,18 @@ def answer(call):
         scores[user] = scores.get(user,0)+1
         correct_answers[user] += 1
 
-        voice = speak("إجابة صحيحة أحسنت")
-
-        bot.send_voice(user,open(voice,"rb"))
-
         bot.send_message(user,"✅ إجابة صحيحة")
 
     else:
 
         scores[user] = scores.get(user,0)-2
 
-        voice = speak("إجابة خاطئة")
-
-        bot.send_voice(user,open(voice,"rb"))
-
         bot.send_message(user,"❌ إجابة خاطئة\n-2 نقاط")
 
     send_question(user)
 
 # =========================
-# DAILY CHALLENGE
+# DAILY
 # =========================
 
 @bot.message_handler(func=lambda m: m.text=="🔥 التحدي اليومي")
@@ -247,7 +231,24 @@ def points(message):
     )
 
 # =========================
-# PROPHETS STORIES
+# LEADERBOARD
+# =========================
+
+@bot.message_handler(func=lambda m: m.text=="🥇 المتصدرون")
+def leaderboard(message):
+
+    top = sorted(scores.items(),key=lambda x:x[1],reverse=True)[:5]
+
+    text = "🥇 لوحة المتصدرين\n\n"
+
+    for i,(user,score) in enumerate(top,1):
+
+        text += f"{i} - {score} نقطة\n"
+
+    bot.send_message(message.chat.id,text)
+
+# =========================
+# PROPHETS
 # =========================
 
 @bot.message_handler(func=lambda m: m.text=="📜 قصص الأنبياء")
@@ -256,7 +257,6 @@ def prophets_menu(message):
     markup = InlineKeyboardMarkup()
 
     for name in prophets.keys():
-
         markup.add(
             InlineKeyboardButton(
                 name,
@@ -304,10 +304,6 @@ def ai_reply(message):
     answer = ai_answer(message.text)
 
     bot.send_message(user,answer)
-
-    voice = speak(answer)
-
-    bot.send_voice(user,open(voice,"rb"))
 
 # =========================
 
