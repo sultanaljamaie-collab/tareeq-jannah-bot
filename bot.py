@@ -13,10 +13,22 @@ bot = telebot.TeleBot(TOKEN)
 
 scores={}
 users=set()
-answers={}
 asking=set()
-messages={}
-timers={}
+
+current_question={}
+question_message={}
+timer_running={}
+
+user_level={}
+question_count={}
+correct_answers={}
+
+quiz_levels={
+"easy":10,
+"medium":50,
+"hard":100,
+"master":500
+}
 
 questions=[
 
@@ -51,8 +63,6 @@ stories={
 "محمد ﷺ":"محمد ﷺ خاتم الأنبياء."
 }
 
-current_question={}
-
 @bot.message_handler(commands=['start'])
 def start(message):
 
@@ -63,9 +73,9 @@ def start(message):
     keyboard.add("📖 تعلم عن الإسلام","🔭 دلائل وجود الله")
     keyboard.add("📚 آية اليوم","🕌 حديث نبوي")
     keyboard.add("📜 قصص الأنبياء","🌍 Discover Islam")
-    keyboard.add("🧠 اختبر معلوماتك","🎮 المسابقة")
-    keyboard.add("🏆 نقاطي","🥇 المتصدرون")
-    keyboard.add("📊 عدد المستخدمين","❓ اسأل عن الإسلام")
+    keyboard.add("🎮 المسابقة","🏆 نقاطي")
+    keyboard.add("🥇 المتصدرون","📊 عدد المستخدمين")
+    keyboard.add("❓ اسأل عن الإسلام")
 
     bot.send_message(message.chat.id,
     "🌙 أهلاً بك في بوت طريق الجنة",
@@ -115,35 +125,68 @@ def english(message):
     bot.send_message(message.chat.id,
     "Islam means worshiping One God and following Prophet Muhammad.")
 
-@bot.message_handler(func=lambda m:m.text=="🧠 اختبر معلوماتك")
-def quiz(message):
-
-    send_question(message.chat.id)
-
 @bot.message_handler(func=lambda m:m.text=="🎮 المسابقة")
-def game(message):
+def choose_level(message):
 
-    send_question(message.chat.id)
+    markup=InlineKeyboardMarkup()
+
+    markup.add(InlineKeyboardButton("🟢 سهل",callback_data="level_easy"))
+    markup.add(InlineKeyboardButton("🟡 متوسط",callback_data="level_medium"))
+    markup.add(InlineKeyboardButton("🔵 متقدم",callback_data="level_hard"))
+    markup.add(InlineKeyboardButton("🔴 عالم",callback_data="level_master"))
+
+    bot.send_message(message.chat.id,
+    "اختر مستوى المسابقة",
+    reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call:call.data.startswith("level_"))
+def set_level(call):
+
+    user=call.message.chat.id
+
+    level=call.data.replace("level_","")
+
+    user_level[user]=level
+
+    question_count[user]=0
+
+    correct_answers[user]=0
+
+    send_question(user)
 
 def send_question(user):
+
+    level=user_level[user]
+
+    total=quiz_levels[level]
+
+    if question_count[user]>=total:
+
+        bot.send_message(user,
+        f"🎉 انتهت المسابقة\n\n"
+        f"الإجابات الصحيحة: {correct_answers[user]} / {total}\n"
+        f"النقاط: {scores.get(user,0)}")
+
+        return
+
+    question_count[user]+=1
 
     q=random.choice(questions)
 
     current_question[user]=q
 
-    answers[user]=q["a"]
-
     markup=InlineKeyboardMarkup()
 
     for opt in q["o"]:
-
         markup.add(InlineKeyboardButton(opt,callback_data="quiz_"+opt))
 
     msg=bot.send_message(user,
-    "⏱ 60\n\n❓ "+q["q"],
+    f"السؤال {question_count[user]} / {total}\n\n⏱ 60 ثانية\n\n❓ {q['q']}",
     reply_markup=markup)
 
-    messages[user]=msg.message_id
+    question_message[user]=msg.message_id
+
+    timer_running[user]=True
 
     start_timer(user)
 
@@ -153,16 +196,23 @@ def start_timer(user):
 
         for i in range(60,0,-1):
 
-            if user not in current_question:
+            if not timer_running.get(user):
                 return
+
+            q=current_question[user]
+
+            markup=InlineKeyboardMarkup()
+
+            for opt in q["o"]:
+                markup.add(InlineKeyboardButton(opt,callback_data="quiz_"+opt))
 
             try:
 
                 bot.edit_message_text(
                 chat_id=user,
-                message_id=messages[user],
-                text="⏱ "+str(i)+"\n\n❓ "+current_question[user]["q"]
-                )
+                message_id=question_message[user],
+                text=f"السؤال {question_count[user]}\n\n⏱ {i} ثانية\n\n❓ {q['q']}",
+                reply_markup=markup)
 
             except:
                 pass
@@ -171,15 +221,13 @@ def start_timer(user):
 
         timeout(user)
 
-    thread=threading.Thread(target=countdown)
-    thread.start()
+    threading.Thread(target=countdown).start()
 
 def timeout(user):
 
     scores[user]=scores.get(user,0)-2
 
-    bot.send_message(user,
-    "⏰ انتهى الوقت\n-2 نقاط")
+    bot.send_message(user,"⏰ انتهى الوقت\n-2 نقاط")
 
     send_question(user)
 
@@ -188,13 +236,17 @@ def answer(call):
 
     user=call.message.chat.id
 
+    timer_running[user]=False
+
     ans=call.data.replace("quiz_","")
 
-    correct=answers.get(user)
+    correct=current_question[user]["a"]
 
     if ans==correct:
 
         scores[user]=scores.get(user,0)+1
+
+        correct_answers[user]+=1
 
         bot.send_message(user,"✅ إجابة صحيحة")
 
