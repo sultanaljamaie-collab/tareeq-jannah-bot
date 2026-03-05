@@ -11,6 +11,7 @@ scores = {}
 users = set()
 user_answers = {}
 
+# الأسئلة
 questions = [
 {"q":"كم عدد أركان الإسلام؟","o":["4","5","6","7"],"a":"5"},
 {"q":"كم عدد أركان الإيمان؟","o":["5","6","7","8"],"a":"6"},
@@ -24,12 +25,14 @@ questions = [
 {"q":"ما اسم كتاب المسلمين؟","o":["التوراة","الإنجيل","القرآن","الزبور"],"a":"القرآن"}
 ]
 
+# آيات
 ayat = [
 "﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾",
 "﴿اللَّهُ خَالِقُ كُلِّ شَيْءٍ﴾",
 "﴿وَمَا خَلَقْتُ الْجِنَّ وَالْإِنسَ إِلَّا لِيَعْبُدُونِ﴾",
 "﴿وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ﴾"
 ]
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -38,81 +41,141 @@ def start(message):
 
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
 
+    keyboard.add("📖 تعلم عن الإسلام")
+    keyboard.add("🔭 دلائل وجود الله")
     keyboard.add("🧠 اختبر معلوماتك")
+
     keyboard.add("📚 آية اليوم")
     keyboard.add("🏆 نقاطي")
+
     keyboard.add("🥇 المتصدرون")
     keyboard.add("📊 عدد المستخدمين")
 
     bot.send_message(
         message.chat.id,
-        "🌙 أهلاً بك في بوت طريق الجنة",
+        "🌙 أهلاً بك في بوت طريق الجنة\n\nاختر من القائمة:",
         reply_markup=keyboard
     )
 
-@bot.message_handler(func=lambda m: m.text=="📚 آية اليوم")
+
+@bot.message_handler(func=lambda m: m.text == "📖 تعلم عن الإسلام")
+def islam(message):
+
+    bot.send_message(
+        message.chat.id,
+        """
+📖 الإسلام هو دين التوحيد
+
+يؤمن المسلمون أن الله واحد لا شريك له
+وأن محمد ﷺ رسول الله.
+
+قال الله تعالى:
+﴿إِنَّ الدِّينَ عِندَ اللَّهِ الإِسْلَامُ﴾
+"""
+    )
+
+
+@bot.message_handler(func=lambda m: m.text == "🔭 دلائل وجود الله")
+def proof(message):
+
+    bot.send_message(
+        message.chat.id,
+        """
+🔭 من دلائل وجود الله:
+
+• دقة الكون
+• تعقيد جسم الإنسان
+• انتظام قوانين الطبيعة
+
+قال الله تعالى:
+
+﴿أَمْ خُلِقُوا مِنْ غَيْرِ شَيْءٍ أَمْ هُمُ الْخَالِقُونَ﴾
+"""
+    )
+
+
+@bot.message_handler(func=lambda m: m.text == "📚 آية اليوم")
 def verse(message):
 
-    bot.send_message(message.chat.id,random.choice(ayat))
+    bot.send_message(message.chat.id, random.choice(ayat))
 
-@bot.message_handler(func=lambda m: m.text=="🧠 اختبر معلوماتك")
+
+@bot.message_handler(func=lambda m: m.text == "🧠 اختبر معلوماتك")
 def quiz(message):
 
-    q=random.choice(questions)
+    q = random.choice(questions)
 
-    user_answers[message.chat.id]=q["a"]
+    user_answers[message.chat.id] = q["a"]
 
-    markup=InlineKeyboardMarkup()
+    markup = InlineKeyboardMarkup()
 
     for opt in q["o"]:
-        markup.add(InlineKeyboardButton(opt,callback_data=opt))
+        markup.add(InlineKeyboardButton(opt, callback_data=opt))
 
-    bot.send_message(message.chat.id,"❓ "+q["q"],reply_markup=markup)
+    bot.send_message(message.chat.id, "❓ " + q["q"], reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call:True)
+
+@bot.callback_query_handler(func=lambda call: True)
 def answer(call):
 
-    user_id=call.message.chat.id
+    user_id = call.message.chat.id
 
-    correct=user_answers.get(user_id)
+    correct = user_answers.get(user_id)
 
-    if call.data==correct:
+    if call.data == correct:
 
-        scores[user_id]=scores.get(user_id,0)+1
+        scores[user_id] = scores.get(user_id, 0) + 1
 
-        bot.send_message(user_id,"✅ إجابة صحيحة\n\nنقاطك: "+str(scores[user_id]))
+        bot.send_message(
+            user_id,
+            "✅ إجابة صحيحة\n\n🏆 نقاطك: " + str(scores[user_id])
+        )
 
     else:
 
-        bot.send_message(user_id,"❌ إجابة خاطئة")
+        bot.send_message(
+            user_id,
+            "❌ إجابة خاطئة حاول مرة أخرى"
+        )
 
-@bot.message_handler(func=lambda m: m.text=="🏆 نقاطي")
+
+@bot.message_handler(func=lambda m: m.text == "🏆 نقاطي")
 def points(message):
 
-    score=scores.get(message.chat.id,0)
+    score = scores.get(message.chat.id, 0)
 
-    bot.send_message(message.chat.id,"🏆 مجموع نقاطك: "+str(score))
+    bot.send_message(
+        message.chat.id,
+        "🏆 مجموع نقاطك: " + str(score)
+    )
 
-@bot.message_handler(func=lambda m: m.text=="🥇 المتصدرون")
+
+@bot.message_handler(func=lambda m: m.text == "🥇 المتصدرون")
 def leaderboard(message):
 
     if not scores:
-        bot.send_message(message.chat.id,"لا يوجد متصدرون بعد.")
+
+        bot.send_message(message.chat.id, "لا يوجد متصدرون بعد.")
         return
 
-    top=sorted(scores.items(),key=lambda x:x[1],reverse=True)[:5]
+    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]
 
-    text="🥇 لوحة المتصدرين\n\n"
+    text = "🥇 لوحة المتصدرين\n\n"
 
-    for i,(user,score) in enumerate(top,1):
+    for i, (user, score) in enumerate(top, 1):
 
-        text+=str(i)+"️⃣ — "+str(score)+" نقطة\n"
+        text += str(i) + "️⃣ — " + str(score) + " نقطة\n"
 
-    bot.send_message(message.chat.id,text)
+    bot.send_message(message.chat.id, text)
 
-@bot.message_handler(func=lambda m: m.text=="📊 عدد المستخدمين")
+
+@bot.message_handler(func=lambda m: m.text == "📊 عدد المستخدمين")
 def stats(message):
 
-    bot.send_message(message.chat.id,"👥 عدد مستخدمي البوت: "+str(len(users)))
+    bot.send_message(
+        message.chat.id,
+        "👥 عدد مستخدمي البوت: " + str(len(users))
+    )
+
 
 bot.infinity_polling()
