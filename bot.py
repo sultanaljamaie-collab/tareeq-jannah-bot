@@ -1,10 +1,48 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import random
 import os
 
 TOKEN = os.getenv("TOKEN")
 
 bot = telebot.TeleBot(TOKEN)
+
+# قائمة الأسئلة
+questions = [
+    {
+        "question": "كم عدد أركان الإسلام؟",
+        "options": ["4", "5", "6", "7"],
+        "answer": "5"
+    },
+    {
+        "question": "كم عدد أركان الإيمان؟",
+        "options": ["5", "6", "7", "8"],
+        "answer": "6"
+    },
+    {
+        "question": "ما أول سورة في القرآن؟",
+        "options": ["الفاتحة", "البقرة", "الإخلاص", "الفلق"],
+        "answer": "الفاتحة"
+    },
+    {
+        "question": "كم عدد الصلوات المفروضة؟",
+        "options": ["3", "4", "5", "6"],
+        "answer": "5"
+    },
+    {
+        "question": "من هو خاتم الأنبياء؟",
+        "options": ["موسى", "عيسى", "محمد ﷺ", "إبراهيم"],
+        "answer": "محمد ﷺ"
+    }
+]
+
+# آيات
+ayat = [
+    "﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾",
+    "﴿اللَّهُ خَالِقُ كُلِّ شَيْءٍ﴾",
+    "﴿وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ﴾",
+    "﴿وَمَا خَلَقْتُ الْجِنَّ وَالْإِنسَ إِلَّا لِيَعْبُدُونِ﴾"
+]
 
 
 @bot.message_handler(commands=['start'])
@@ -15,6 +53,8 @@ def start(message):
     keyboard.add("📖 تعلم عن الإسلام")
     keyboard.add("🔭 دلائل وجود الله")
     keyboard.add("🧠 اختبر معلوماتك")
+    keyboard.add("📚 آية اليوم")
+    keyboard.add("❓ اسأل عن الإسلام")
 
     bot.send_message(
         message.chat.id,
@@ -28,7 +68,12 @@ def islam(message):
 
     bot.send_message(
         message.chat.id,
-        "الإسلام هو عبادة الله وحده واتباع رسول الله محمد ﷺ"
+        """
+الإسلام هو دين التوحيد
+
+يؤمن المسلمون أن الله واحد لا شريك له
+وأن محمد ﷺ رسول الله.
+"""
     )
 
 
@@ -37,46 +82,69 @@ def proof(message):
 
     bot.send_message(
         message.chat.id,
-        "قال الله تعالى:\n\n﴿أَمْ خُلِقُوا مِنْ غَيْرِ شَيْءٍ أَمْ هُمُ الْخَالِقُونَ﴾"
+        """
+قال الله تعالى:
+
+﴿أَمْ خُلِقُوا مِنْ غَيْرِ شَيْءٍ أَمْ هُمُ الْخَالِقُونَ﴾
+"""
+    )
+
+
+@bot.message_handler(func=lambda m: m.text == "📚 آية اليوم")
+def verse(message):
+
+    ayah = random.choice(ayat)
+
+    bot.send_message(
+        message.chat.id,
+        "📖 آية للتأمل:\n\n" + ayah
     )
 
 
 @bot.message_handler(func=lambda m: m.text == "🧠 اختبر معلوماتك")
 def quiz(message):
 
+    q = random.choice(questions)
+
     markup = InlineKeyboardMarkup()
 
-    btn1 = InlineKeyboardButton("4", callback_data="wrong")
-    btn2 = InlineKeyboardButton("5", callback_data="correct")
-    btn3 = InlineKeyboardButton("6", callback_data="wrong")
-    btn4 = InlineKeyboardButton("7", callback_data="wrong")
-
-    markup.add(btn1, btn2)
-    markup.add(btn3, btn4)
+    for option in q["options"]:
+        markup.add(InlineKeyboardButton(option, callback_data=option))
 
     bot.send_message(
         message.chat.id,
-        "❓ كم عدد أركان الإسلام؟",
+        "❓ " + q["question"],
         reply_markup=markup
     )
+
+    bot.register_next_step_handler(message, lambda msg: None)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def answer(call):
 
-    if call.data == "correct":
+    if call.data in ["5", "6", "الفاتحة", "محمد ﷺ"]:
 
         bot.send_message(
             call.message.chat.id,
-            "✅ إجابة صحيحة\n\nأركان الإسلام خمسة."
+            "✅ إجابة صحيحة"
         )
 
     else:
 
         bot.send_message(
             call.message.chat.id,
-            "❌ إجابة خاطئة حاول مرة أخرى."
+            "❌ إجابة خاطئة"
         )
+
+
+@bot.message_handler(func=lambda m: m.text == "❓ اسأل عن الإسلام")
+def ask(message):
+
+    bot.send_message(
+        message.chat.id,
+        "اكتب سؤالك عن الإسلام وسنجيبك."
+    )
 
 
 bot.infinity_polling()
