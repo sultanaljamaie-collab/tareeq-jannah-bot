@@ -12,6 +12,7 @@ from achievements import get_medal
 from daily import daily_question
 from levels import quiz_levels
 from voice import speak
+from ai_system import ai_answer
 
 TOKEN = os.getenv("TOKEN")
 
@@ -28,6 +29,12 @@ user_level = {}
 question_count = {}
 correct_answers = {}
 
+waiting_ai = set()
+
+# =========================
+# START
+# =========================
+
 @bot.message_handler(commands=['start'])
 def start(message):
 
@@ -37,12 +44,17 @@ def start(message):
 
     keyboard.add("🎮 المسابقة","🔥 التحدي اليومي")
     keyboard.add("📜 قصص الأنبياء","🏆 نقاطي")
+    keyboard.add("🤖 اسأل الذكاء الإسلامي")
 
     bot.send_message(
         message.chat.id,
         "🌙 مرحبا بك في بوت طريق الجنة\nاختر من القائمة:",
         reply_markup=keyboard
     )
+
+# =========================
+# QUIZ LEVELS
+# =========================
 
 @bot.message_handler(func=lambda m: m.text=="🎮 المسابقة")
 def choose_level(message):
@@ -76,6 +88,10 @@ def set_level(call):
     bot.send_voice(user,open(voice,"rb"))
 
     send_question(user)
+
+# =========================
+# SEND QUESTION
+# =========================
 
 def send_question(user):
 
@@ -135,6 +151,10 @@ def send_question(user):
 
     start_timer(user)
 
+# =========================
+# TIMER
+# =========================
+
 def start_timer(user):
 
     def timer():
@@ -158,6 +178,10 @@ def start_timer(user):
 
     threading.Thread(target=timer).start()
 
+# =========================
+# ANSWER
+# =========================
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("quiz_"))
 def answer(call):
 
@@ -172,7 +196,6 @@ def answer(call):
     if ans == correct:
 
         scores[user] = scores.get(user,0)+1
-
         correct_answers[user] += 1
 
         voice = speak("إجابة صحيحة أحسنت")
@@ -193,6 +216,10 @@ def answer(call):
 
     send_question(user)
 
+# =========================
+# DAILY CHALLENGE
+# =========================
+
 @bot.message_handler(func=lambda m: m.text=="🔥 التحدي اليومي")
 def daily(message):
 
@@ -202,6 +229,10 @@ def daily(message):
         message.chat.id,
         f"🔥 تحدي اليوم\n\n{q['question']}"
     )
+
+# =========================
+# POINTS
+# =========================
 
 @bot.message_handler(func=lambda m: m.text=="🏆 نقاطي")
 def points(message):
@@ -214,6 +245,10 @@ def points(message):
         message.chat.id,
         f"🏆 نقاطك: {score}\n{medal}"
     )
+
+# =========================
+# PROPHETS STORIES
+# =========================
 
 @bot.message_handler(func=lambda m: m.text=="📜 قصص الأنبياء")
 def prophets_menu(message):
@@ -244,5 +279,36 @@ def prophet_story(call):
         call.message.chat.id,
         prophets[name]
     )
+
+# =========================
+# AI SYSTEM
+# =========================
+
+@bot.message_handler(func=lambda m: m.text=="🤖 اسأل الذكاء الإسلامي")
+def ask_ai(message):
+
+    waiting_ai.add(message.chat.id)
+
+    bot.send_message(
+        message.chat.id,
+        "اكتب سؤالك عن الإسلام:"
+    )
+
+@bot.message_handler(func=lambda m: m.chat.id in waiting_ai)
+def ai_reply(message):
+
+    user = message.chat.id
+
+    waiting_ai.remove(user)
+
+    answer = ai_answer(message.text)
+
+    bot.send_message(user,answer)
+
+    voice = speak(answer)
+
+    bot.send_voice(user,open(voice,"rb"))
+
+# =========================
 
 bot.infinity_polling()
