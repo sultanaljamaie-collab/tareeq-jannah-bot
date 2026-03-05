@@ -39,9 +39,9 @@ def start(message):
     keyboard.add("📜 قصص الأنبياء","🏆 نقاطي")
 
     bot.send_message(
-    message.chat.id,
-    "مرحبا بك في بوت طريق الجنة",
-    reply_markup=keyboard
+        message.chat.id,
+        "🌙 مرحبا بك في بوت طريق الجنة\nاختر من القائمة:",
+        reply_markup=keyboard
     )
 
 @bot.message_handler(func=lambda m: m.text=="🎮 المسابقة")
@@ -54,7 +54,11 @@ def choose_level(message):
     markup.add(InlineKeyboardButton("🔵 متقدم",callback_data="level_hard"))
     markup.add(InlineKeyboardButton("🔴 عالم",callback_data="level_master"))
 
-    bot.send_message(message.chat.id,"اختر المستوى",reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "اختر مستوى المسابقة:",
+        reply_markup=markup
+    )
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("level_"))
 def set_level(call):
@@ -64,9 +68,7 @@ def set_level(call):
     level = call.data.replace("level_","")
 
     user_level[user] = level
-
     question_count[user] = 0
-
     correct_answers[user] = 0
 
     voice = speak("بدأت المسابقة")
@@ -91,11 +93,13 @@ def send_question(user):
 
         bot.send_voice(user,open(voice,"rb"))
 
-        bot.send_message(user,
-        f"🎉 انتهت المسابقة\n\n"
-        f"الإجابات الصحيحة {score} من {total}\n"
-        f"النقاط {scores.get(user,0)}\n"
-        f"{medal}")
+        bot.send_message(
+            user,
+            f"🎉 انتهت المسابقة\n\n"
+            f"الإجابات الصحيحة {score} من {total}\n"
+            f"النقاط {scores.get(user,0)}\n"
+            f"{medal}"
+        )
 
         return
 
@@ -108,12 +112,19 @@ def send_question(user):
     markup = InlineKeyboardMarkup()
 
     for opt in q["options"]:
-        markup.add(InlineKeyboardButton(opt,callback_data="quiz_"+opt))
+        markup.add(
+            InlineKeyboardButton(
+                opt,
+                callback_data="quiz_"+opt
+            )
+        )
 
     bot.send_message(
-    user,
-    f"السؤال {question_count[user]} من {total}\n⏱ {QUESTION_TIME} ثانية\n\n❓ {q['question']}",
-    reply_markup=markup
+        user,
+        f"السؤال {question_count[user]} من {total}\n"
+        f"⏱ {QUESTION_TIME} ثانية\n\n"
+        f"❓ {q['question']}",
+        reply_markup=markup
     )
 
     voice = speak(q["question"])
@@ -187,7 +198,10 @@ def daily(message):
 
     q = daily_question()
 
-    bot.send_message(message.chat.id,q["question"])
+    bot.send_message(
+        message.chat.id,
+        f"🔥 تحدي اليوم\n\n{q['question']}"
+    )
 
 @bot.message_handler(func=lambda m: m.text=="🏆 نقاطي")
 def points(message):
@@ -196,7 +210,10 @@ def points(message):
 
     medal = get_medal(score)
 
-    bot.send_message(message.chat.id,f"🏆 نقاطك {score}\n{medal}")
+    bot.send_message(
+        message.chat.id,
+        f"🏆 نقاطك: {score}\n{medal}"
+    )
 
 @bot.message_handler(func=lambda m: m.text=="📜 قصص الأنبياء")
 def prophets_menu(message):
@@ -204,15 +221,28 @@ def prophets_menu(message):
     markup = InlineKeyboardMarkup()
 
     for name in prophets.keys():
-        markup.add(InlineKeyboardButton(name,callback_data="prophet_"+name))
 
-    bot.send_message(message.chat.id,"اختر نبي",reply_markup=markup)
+        markup.add(
+            InlineKeyboardButton(
+                name,
+                callback_data="prophet_"+name
+            )
+        )
+
+    bot.send_message(
+        message.chat.id,
+        "اختر نبي:",
+        reply_markup=markup
+    )
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("prophet_"))
 def prophet_story(call):
 
     name = call.data.replace("prophet_","")
 
-    bot.send_message(call.message.chat.id,prophets[name])
+    bot.send_message(
+        call.message.chat.id,
+        prophets[name]
+    )
 
 bot.infinity_polling()
